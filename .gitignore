@@ -1,0 +1,6 @@
+devlog.md
+31
+build/
+backups/
+*.log
+*.err
