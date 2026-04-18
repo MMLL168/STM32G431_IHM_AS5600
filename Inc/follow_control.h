@@ -22,5 +22,8 @@ extern volatile FollowControlSnapshot_t g_follow_control;
 
 void FollowControl_Init(void);
 void FollowControl_Task(void);
+void FollowControl_OnTuningProfileChanged(void);
+uint16_t FollowControl_GetCommandAngleDeg10(void);
+int16_t FollowControl_GetCurrentCommandMilliAmp(void);
 
 #endif /* FOLLOW_CONTROL_H */

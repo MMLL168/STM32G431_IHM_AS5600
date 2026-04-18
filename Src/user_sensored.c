@@ -1,8 +1,16 @@
+#include <stdint.h>
+
 #include "user_sensored.h"
 
 #include "as5600_follower.h"
+#include "follow_tuning_runtime.h"
 #include "parameters_conversion.h"
 #include "pmsm_motor_parameters.h"
+
+#define US_CFG(field) (FollowTuning_GetProfile()->field)
+
+static int16_t UserSensored_MechanicalSpeedRpmToElSpeedDpp(int16_t mechanical_speed_rpm);
+static uint16_t UserSensored_MechanicalToElectricalAngleDeg10(uint16_t mechanical_angle_deg10);
 
 typedef struct
 {
@@ -68,10 +76,28 @@ static int16_t UserSensored_Deg10ToS16(uint16_t angle_deg10)
   return (int16_t)((normalized * 65536UL) / 3600UL);
 }
 
+static void UserSensored_RefreshElectricalState(void)
+{
+  s_user_sensored._Super.hElSpeedDpp =
+      UserSensored_MechanicalSpeedRpmToElSpeedDpp(s_user_sensored.mechanical_speed_rpm);
+  s_user_sensored._Super.InstantaneousElSpeedDpp = s_user_sensored._Super.hElSpeedDpp;
+
+  if (s_user_sensored.aligned != 0U)
+  {
+    s_user_sensored.electrical_angle_deg10 =
+        UserSensored_MechanicalToElectricalAngleDeg10(s_user_sensored.mechanical_angle_deg10);
+    s_user_sensored.predicted_electrical_angle_s16 =
+        UserSensored_Deg10ToS16(s_user_sensored.electrical_angle_deg10);
+    s_user_sensored._Super.hElAngle = s_user_sensored.predicted_electrical_angle_s16;
+  }
+}
+
 static int32_t UserSensored_GetEffectiveDirectionSign(void)
 {
   const int32_t runtime_direction_sign = (s_user_sensored.runtime_direction_sign < 0) ? -1 : 1;
-  return (int32_t)USER_SENSORED_DIRECTION_SIGN * runtime_direction_sign;
+  const int32_t configured_direction_sign = (US_CFG(user_sensored_direction_sign) < 0) ? -1 : 1;
+
+  return configured_direction_sign * runtime_direction_sign;
 }
 
 static uint16_t UserSensored_RawToMechanicalAngleDeg10(uint16_t raw_angle)
@@ -94,8 +120,8 @@ static uint16_t UserSensored_MechanicalToElectricalAngleDeg10(uint16_t mechanica
                                                 (int32_t)s_user_sensored.alignment_mechanical_angle_deg10);
   const int32_t electrical_angle_deg10 =
       (mechanical_delta_deg10 * (int32_t)POLE_PAIR_NUM * UserSensored_GetEffectiveDirectionSign()) +
-      (int32_t)USER_SENSORED_ALIGN_LOCK_ELEC_DEG10 +
-      (int32_t)USER_SENSORED_ELEC_TRIM_DEG10 +
+      (int32_t)US_CFG(user_sensored_align_lock_elec_deg10) +
+      (int32_t)US_CFG(user_sensored_elec_trim_deg10) +
       (int32_t)s_user_sensored.runtime_electrical_trim_deg10;
 
   return UserSensored_NormalizeAngleDeg10(electrical_angle_deg10);
@@ -111,6 +137,8 @@ static void UserSensored_ClearFeedbackState(void)
 
 void UserSensored_Init(void)
 {
+  FollowTuning_Init();
+
   if (s_user_sensored.initialized != 0U)
   {
     return;
@@ -153,6 +181,12 @@ void UserSensored_InvalidateAlignment(void)
   s_user_sensored._Super.hElAngle = 0;
   s_user_sensored.predicted_electrical_angle_s16 = 0;
   UserSensored_ClearFeedbackState();
+}
+
+void UserSensored_OnTuningProfileChanged(void)
+{
+  UserSensored_Init();
+  UserSensored_RefreshElectricalState();
 }
 
 void UserSensored_MediumFrequencyUpdate(void)
@@ -198,9 +232,10 @@ void UserSensored_MediumFrequencyUpdate(void)
 
   s_user_sensored.mechanical_speed_rpm +=
       (int16_t)(((int32_t)instant_mechanical_speed_rpm - (int32_t)s_user_sensored.mechanical_speed_rpm) /
-                (1 << USER_SENSORED_SPEED_LPF_SHIFT));
+                (1 << US_CFG(user_sensored_speed_lpf_shift)));
 
-  if (UserSensored_AbsI32((int32_t)s_user_sensored.mechanical_speed_rpm) <= USER_SENSORED_SPEED_ZERO_WINDOW_RPM)
+  if (UserSensored_AbsI32((int32_t)s_user_sensored.mechanical_speed_rpm) <=
+      US_CFG(user_sensored_speed_zero_window_rpm))
   {
     s_user_sensored.mechanical_speed_rpm = 0;
   }
@@ -211,18 +246,7 @@ void UserSensored_MediumFrequencyUpdate(void)
 
   s_user_sensored._Super.hAvrMecSpeedUnit =
       (int16_t)((s_user_sensored.mechanical_speed_rpm * SPEED_UNIT) / U_RPM);
-  s_user_sensored._Super.hElSpeedDpp =
-      UserSensored_MechanicalSpeedRpmToElSpeedDpp(s_user_sensored.mechanical_speed_rpm);
-  s_user_sensored._Super.InstantaneousElSpeedDpp = s_user_sensored._Super.hElSpeedDpp;
-
-  if (s_user_sensored.aligned != 0U)
-  {
-    s_user_sensored.electrical_angle_deg10 =
-        UserSensored_MechanicalToElectricalAngleDeg10(mechanical_angle_deg10);
-    s_user_sensored.predicted_electrical_angle_s16 =
-        UserSensored_Deg10ToS16(s_user_sensored.electrical_angle_deg10);
-    s_user_sensored._Super.hElAngle = s_user_sensored.predicted_electrical_angle_s16;
-  }
+    UserSensored_RefreshElectricalState();
 
   s_user_sensored._Super.bSpeedErrorNumber = 0U;
 
@@ -292,30 +316,14 @@ void UserSensored_SetRuntimeDirectionSign(int8_t direction_sign)
 {
   UserSensored_Init();
   s_user_sensored.runtime_direction_sign = (direction_sign < 0) ? -1 : 1;
-
-  if (s_user_sensored.aligned != 0U)
-  {
-    s_user_sensored.electrical_angle_deg10 =
-        UserSensored_MechanicalToElectricalAngleDeg10(s_user_sensored.mechanical_angle_deg10);
-    s_user_sensored.predicted_electrical_angle_s16 =
-        UserSensored_Deg10ToS16(s_user_sensored.electrical_angle_deg10);
-    s_user_sensored._Super.hElAngle = s_user_sensored.predicted_electrical_angle_s16;
-  }
+  UserSensored_RefreshElectricalState();
 }
 
 void UserSensored_SetRuntimeElectricalTrimDeg10(int16_t trim_deg10)
 {
   UserSensored_Init();
   s_user_sensored.runtime_electrical_trim_deg10 = UserSensored_NormalizeAngleDeg10((int32_t)trim_deg10);
-
-  if (s_user_sensored.aligned != 0U)
-  {
-    s_user_sensored.electrical_angle_deg10 =
-        UserSensored_MechanicalToElectricalAngleDeg10(s_user_sensored.mechanical_angle_deg10);
-    s_user_sensored.predicted_electrical_angle_s16 =
-        UserSensored_Deg10ToS16(s_user_sensored.electrical_angle_deg10);
-    s_user_sensored._Super.hElAngle = s_user_sensored.predicted_electrical_angle_s16;
-  }
+  UserSensored_RefreshElectricalState();
 }
 
 uint16_t UserSensored_GetRawAngle(void)

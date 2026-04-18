@@ -49,6 +49,9 @@ typedef struct
   int16_t follow_target_rpm;
   int16_t follow_filtered_speed_rpm;
   int16_t follow_integral_rpm;
+  int16_t follow_current_command_ma;
+  int16_t follow_test_mode;
+  int16_t follow_probe_phase_index;
   uint8_t follow_active;
   uint8_t follow_hold_active;
   uint8_t follow_source_online;
@@ -61,6 +64,8 @@ typedef struct
   uint16_t sensored_elec_angle_deg10;
   uint16_t sensored_align_angle_deg10;
   int16_t sensored_speed_rpm;
+  int16_t sensored_runtime_direction_sign;
+  int16_t sensored_runtime_electrical_trim_deg10;
   uint16_t sensored_reserved;
   float speed_ref_rpm;
   float speed_avg_rpm;

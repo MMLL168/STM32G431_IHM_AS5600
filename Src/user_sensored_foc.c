@@ -1,3 +1,5 @@
+#include <stdint.h>
+
 #include "main.h"
 #include "mc_config.h"
 #include "mc_config_common.h"
@@ -7,7 +9,10 @@
 #include "parameters_conversion.h"
 #include "pwm_common.h"
 #include "regular_conversion_manager.h"
+#include "follow_tuning_runtime.h"
 #include "user_sensored.h"
+
+#define US_CFG(field) (FollowTuning_GetProfile()->field)
 
 #define M1_CHARGE_BOOT_CAP_TICKS (((uint16_t)SYS_TICK_FREQUENCY * (uint16_t)10) / 1000U)
 #define M1_CHARGE_BOOT_CAP_DUTY_CYCLES (uint32_t)(0.000 * ((uint32_t)PWM_PERIOD_CYCLES / 2U))
@@ -19,7 +24,19 @@ void FOC_CalcCurrRef(uint8_t bMotor);
 
 static int16_t UserSensored_GetLockElectricalAngleS16(void)
 {
-  return (int16_t)((USER_SENSORED_ALIGN_LOCK_ELEC_DEG10 * 65536UL) / 3600UL);
+  int32_t angle_deg10 = US_CFG(user_sensored_align_lock_elec_deg10);
+
+  while (angle_deg10 < 0)
+  {
+    angle_deg10 += 3600;
+  }
+
+  while (angle_deg10 >= 3600)
+  {
+    angle_deg10 -= 3600;
+  }
+
+  return (int16_t)(((uint32_t)angle_deg10 * 65536UL) / 3600UL);
 }
 
 static qd_t UserSensored_GetAlignmentCurrentReference(void)
@@ -27,7 +44,7 @@ static qd_t UserSensored_GetAlignmentCurrentReference(void)
   qd_t iqd_ref = {0};
 
   iqd_ref.q = 0;
-  iqd_ref.d = (int16_t)(USER_SENSORED_ALIGN_CURRENT_A * CURRENT_CONV_FACTOR);
+  iqd_ref.d = (int16_t)(US_CFG(user_sensored_align_current_a) * CURRENT_CONV_FACTOR);
   return iqd_ref;
 }
 
@@ -205,7 +222,7 @@ void TSK_MediumFrequencyTaskM1(void)
             FOCVars[M1].Iqdref = iqd_ref;
             FOCVars[M1].UserIdref = iqd_ref.d;
 
-            if ((HAL_GetTick() - s_alignment_start_tick_ms) >= USER_SENSORED_ALIGN_DURATION_MS)
+            if ((HAL_GetTick() - s_alignment_start_tick_ms) >= (uint32_t)US_CFG(user_sensored_align_duration_ms))
             {
               if (UserSensored_CaptureAlignment() == 0U)
               {

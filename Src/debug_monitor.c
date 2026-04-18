@@ -5,6 +5,7 @@
 #include "as5600_follower.h"
 #include "as5600_knob.h"
 #include "follow_control.h"
+#include "follow_tuning_runtime.h"
 #include "main.h"
 #include "motorcontrol.h"
 #include "user_sensored.h"
@@ -58,6 +59,9 @@ void DebugMonitor_Init(void)
   g_debug_monitor.follow_target_rpm = 0;
   g_debug_monitor.follow_filtered_speed_rpm = 0;
   g_debug_monitor.follow_integral_rpm = 0;
+  g_debug_monitor.follow_current_command_ma = 0;
+  g_debug_monitor.follow_test_mode = 0;
+  g_debug_monitor.follow_probe_phase_index = 0;
   g_debug_monitor.follow_active = 0u;
   g_debug_monitor.follow_hold_active = 1u;
   g_debug_monitor.follow_source_online = 0u;
@@ -70,6 +74,8 @@ void DebugMonitor_Init(void)
   g_debug_monitor.sensored_elec_angle_deg10 = 0u;
   g_debug_monitor.sensored_align_angle_deg10 = 0u;
   g_debug_monitor.sensored_speed_rpm = 0;
+  g_debug_monitor.sensored_runtime_direction_sign = 0;
+  g_debug_monitor.sensored_runtime_electrical_trim_deg10 = 0;
   g_debug_monitor.sensored_reserved = 0u;
   g_debug_monitor.speed_ref_rpm = 0.0f;
   g_debug_monitor.speed_avg_rpm = 0.0f;
@@ -133,6 +139,12 @@ void DebugMonitor_Task(void)
   g_debug_monitor.follow_target_rpm = g_follow_control.target_rpm;
   g_debug_monitor.follow_filtered_speed_rpm = g_follow_control.filtered_speed_rpm;
   g_debug_monitor.follow_integral_rpm = g_follow_control.integral_rpm;
+  g_debug_monitor.follow_current_command_ma = FollowControl_GetCurrentCommandMilliAmp();
+  g_debug_monitor.follow_test_mode = (int16_t)FollowTuning_GetProfile()->test_mode;
+  g_debug_monitor.follow_probe_phase_index =
+      (g_debug_monitor.follow_test_mode == FOLLOW_CONTROL_TEST_MODE_DIRECTION_PROBE)
+          ? (int16_t)g_follow_control.reserved0
+          : -1;
   g_debug_monitor.follow_active = g_follow_control.active;
   g_debug_monitor.follow_hold_active = g_follow_control.hold_active;
   g_debug_monitor.follow_source_online = g_follow_control.source_online;
@@ -145,6 +157,8 @@ void DebugMonitor_Task(void)
   g_debug_monitor.sensored_elec_angle_deg10 = UserSensored_GetElectricalAngleDeg10();
   g_debug_monitor.sensored_align_angle_deg10 = UserSensored_GetAlignmentMechanicalAngleDeg10();
   g_debug_monitor.sensored_speed_rpm = UserSensored_GetMechanicalSpeedRpm();
+  g_debug_monitor.sensored_runtime_direction_sign = UserSensored_GetRuntimeDirectionSign();
+  g_debug_monitor.sensored_runtime_electrical_trim_deg10 = UserSensored_GetRuntimeElectricalTrimDeg10();
   g_debug_monitor.sensored_reserved = UserSensored_GetRuntimeElectricalTrimDeg10();
   g_debug_monitor.speed_ref_rpm = MC_GetMecSpeedReferenceMotor1_F();
   g_debug_monitor.speed_avg_rpm = MC_GetAverageMecSpeedMotor1_F();

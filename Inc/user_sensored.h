@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+#include "tuning_config.h"
 #include "mc_type.h"
 #include "speed_pos_fdbk.h"
 
@@ -41,6 +42,7 @@ extern "C" {
 void UserSensored_Init(void);
 void UserSensored_ResetRuntime(void);
 void UserSensored_InvalidateAlignment(void);
+void UserSensored_OnTuningProfileChanged(void);
 void UserSensored_MediumFrequencyUpdate(void);
 void UserSensored_HighFrequencyUpdate(void);
 uint8_t UserSensored_CaptureAlignment(void);

@@ -2,5 +2,7 @@ devlog.md
 31
 build/
 backups/
+tools/__pycache__/
+*.pyc
 *.log
 *.err
