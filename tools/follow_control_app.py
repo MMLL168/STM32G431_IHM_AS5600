@@ -41,6 +41,7 @@ ZONE_COLORS = {
     0: "#4cc9f0",
     1: "#ffd166",
     2: "#ff6b6b",
+    3: "#f4a261",
 }
 
 PRESET_HINTS = {
@@ -141,6 +142,8 @@ def zone_text(snapshot: dict) -> str:
         return f"Probe phase {snapshot['settle_active']}"
 
     state = int(snapshot["settle_active"])
+    if state == 3:
+        return "Manual align hold"
     if state == 2:
         return "Urgent brake"
     if state == 1:

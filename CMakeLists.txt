@@ -47,6 +47,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/Src/follow_control.c
     ${CMAKE_SOURCE_DIR}/Src/follow_tuning_mcp.c
     ${CMAKE_SOURCE_DIR}/Src/follow_tuning_runtime.c
+    ${CMAKE_SOURCE_DIR}/Src/user_button_alignment.c
     ${CMAKE_SOURCE_DIR}/Src/user_sensored.c
     ${CMAKE_SOURCE_DIR}/Src/user_sensored_foc.c
     ${CMAKE_SOURCE_DIR}/Src/user_runtime_hooks.c

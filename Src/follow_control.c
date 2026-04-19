@@ -13,6 +13,7 @@
 #define FOLLOW_CONTROL_TASK_PERIOD_MS 10U
 #define FOLLOW_CONTROL_CURRENT_SLEW_MA_PER_TICK 10
 #define FOLLOW_CONTROL_CURRENT_ZERO_CROSS_SLEW_MA_PER_TICK 20
+#define FOLLOW_CONTROL_STATUS_MANUAL_ALIGN_HOLD 3U
 #define FC_CFG(field) (FollowTuning_GetProfile()->field)
 
 typedef struct
@@ -54,8 +55,11 @@ static uint32_t s_follow_next_tick_ms = 0U;
 static uint32_t s_follow_probe_next_switch_ms = 0U;
 static uint32_t s_follow_test_next_switch_ms = 0U;
 static uint16_t s_follow_command_angle_deg10 = 0U;
+static uint16_t s_follow_manual_hold_target_angle_deg10 = 0U;
 static int16_t s_follow_angle_offset_deg10 = 0;
+static int16_t s_follow_source_align_offset_deg10 = 0;
 static uint8_t s_follow_probe_phase_index = 0U;
+static uint8_t s_follow_manual_align_hold_active = 0U;
 
 static uint16_t FollowControl_NormalizeAngleDeg10(int32_t angle_deg10)
 {
@@ -166,6 +170,12 @@ static uint16_t FollowControl_ApplyDirection(uint16_t angle_deg10, int32_t direc
   return FollowControl_NormalizeAngleDeg10(signed_angle_deg10);
 }
 
+static uint16_t FollowControl_ApplySourceAlignmentOffset(uint16_t target_angle_deg10)
+{
+  return FollowControl_NormalizeAngleDeg10((int32_t)target_angle_deg10 +
+                                           (int32_t)s_follow_source_align_offset_deg10);
+}
+
 static uint16_t FollowControl_GetSelectedTargetAngleDeg10(uint32_t now_ms,
                                                           uint16_t knob_target_angle_deg10,
                                                           uint16_t follower_angle_deg10)
@@ -216,6 +226,7 @@ static void FollowControl_ResetDynamicState(void)
   s_follow_last_actual_angle_deg10 = 0U;
   s_follow_outer_actual_angle_deg10 = 0U;
   s_follow_test_center_angle_deg10 = 0U;
+  s_follow_manual_hold_target_angle_deg10 = 0U;
   s_follow_hold_active = 1U;
   s_follow_alignment_valid = 0U;
   s_follow_has_speed_sample = 0U;
@@ -224,6 +235,7 @@ static void FollowControl_ResetDynamicState(void)
   s_follow_angle_offset_deg10 = 0;
   s_follow_command_angle_deg10 = 0U;
   s_follow_probe_phase_index = 0U;
+  s_follow_manual_align_hold_active = 0U;
   s_follow_probe_next_switch_ms = 0U;
   s_follow_test_next_switch_ms = 0U;
   UserSensored_SetRuntimeDirectionSign(1);
@@ -236,7 +248,7 @@ static void FollowControl_StopMotorIfRunning(void)
 
   if ((state == RUN) || (state == START) || (state == CHARGE_BOOT_CAP) ||
       (state == OFFSET_CALIB) || (state == SWITCH_OVER) ||
-      (state == ALIGNMENT) || (state == STOP))
+      (state == ALIGNMENT))
   {
     (void)MC_StopMotor1();
   }
@@ -306,12 +318,14 @@ void FollowControl_Init(void)
   g_follow_control.source_online = 0U;
   g_follow_control.follower_online = 0U;
   g_follow_control.reserved0 = 0U;
+  s_follow_source_align_offset_deg10 = 0;
   s_follow_next_tick_ms = HAL_GetTick();
   FollowControl_ResetDynamicState();
 }
 
 void FollowControl_OnTuningProfileChanged(void)
 {
+  s_follow_source_align_offset_deg10 = 0;
   FollowControl_ResetDynamicState();
   g_follow_control.angle_error_deg10 = 0;
   g_follow_control.target_rpm = 0;
@@ -322,6 +336,72 @@ void FollowControl_OnTuningProfileChanged(void)
   g_follow_control.reserved0 = 0U;
   s_follow_next_tick_ms = HAL_GetTick();
   FollowControl_CommandZeroCurrent();
+}
+
+uint8_t FollowControl_BeginManualAlignHold(void)
+{
+  uint16_t mapped_follower_angle_deg10;
+
+  if ((FC_CFG(test_mode) != FOLLOW_CONTROL_TEST_MODE_NORMAL_FOLLOW) ||
+      (g_as5600_follower.online == 0U))
+  {
+    return 0U;
+  }
+
+  mapped_follower_angle_deg10 =
+      FollowControl_ApplyDirection(g_as5600_follower.angle_deg10, FC_CFG(follower_direction_sign));
+
+  s_follow_manual_hold_target_angle_deg10 = mapped_follower_angle_deg10;
+  s_follow_manual_align_hold_active = 1U;
+  s_follow_alignment_valid = 1U;
+  s_follow_hold_active = 1U;
+  s_follow_integral_accum = 0;
+  s_follow_target_rpm_cmd = 0;
+  s_follow_current_cmd_ma = 0;
+  s_follow_filtered_speed_rpm = 0;
+  s_follow_command_step_deg10 = 0;
+  s_follow_command_angle_deg10 = mapped_follower_angle_deg10;
+  s_follow_outer_actual_angle_deg10 = mapped_follower_angle_deg10;
+  s_follow_last_actual_angle_deg10 = mapped_follower_angle_deg10;
+  s_follow_has_speed_sample = 0U;
+
+  return 1U;
+}
+
+void FollowControl_EndManualAlignHold(void)
+{
+  uint16_t mapped_target_angle_deg10;
+  uint16_t mapped_follower_angle_deg10;
+
+  if (s_follow_manual_align_hold_active == 0U)
+  {
+    return;
+  }
+
+  if ((FC_CFG(test_mode) == FOLLOW_CONTROL_TEST_MODE_NORMAL_FOLLOW) &&
+      (g_as5600_knob.online != 0U) &&
+      (g_as5600_follower.online != 0U))
+  {
+    mapped_target_angle_deg10 =
+        FollowControl_ApplyDirection(g_as5600_knob.angle_deg10, FC_CFG(source_direction_sign));
+    mapped_follower_angle_deg10 =
+        FollowControl_ApplyDirection(g_as5600_follower.angle_deg10, FC_CFG(follower_direction_sign));
+
+    s_follow_source_align_offset_deg10 =
+        FollowControl_WrapAngleErrorDeg10(mapped_follower_angle_deg10, mapped_target_angle_deg10);
+    s_follow_command_angle_deg10 = mapped_follower_angle_deg10;
+    s_follow_outer_actual_angle_deg10 = mapped_follower_angle_deg10;
+    s_follow_last_actual_angle_deg10 = mapped_follower_angle_deg10;
+    s_follow_integral_accum = 0;
+    s_follow_target_rpm_cmd = 0;
+    s_follow_current_cmd_ma = 0;
+    s_follow_filtered_speed_rpm = 0;
+    s_follow_command_step_deg10 = 0;
+    s_follow_has_speed_sample = 0U;
+    s_follow_hold_active = 1U;
+  }
+
+  s_follow_manual_align_hold_active = 0U;
 }
 
 void FollowControl_Task(void)
@@ -390,10 +470,23 @@ void FollowControl_Task(void)
 
   mapped_target_angle_deg10 =
       FollowControl_ApplyDirection(g_as5600_knob.angle_deg10, FC_CFG(source_direction_sign));
+  if (FC_CFG(test_mode) == FOLLOW_CONTROL_TEST_MODE_NORMAL_FOLLOW)
+  {
+    mapped_target_angle_deg10 = FollowControl_ApplySourceAlignmentOffset(mapped_target_angle_deg10);
+  }
   mapped_follower_angle_deg10 =
       FollowControl_ApplyDirection(g_as5600_follower.angle_deg10, FC_CFG(follower_direction_sign));
-  mapped_target_angle_deg10 =
-    FollowControl_GetSelectedTargetAngleDeg10(now_ms, mapped_target_angle_deg10, mapped_follower_angle_deg10);
+
+  if ((FC_CFG(test_mode) == FOLLOW_CONTROL_TEST_MODE_NORMAL_FOLLOW) &&
+      (s_follow_manual_align_hold_active != 0U))
+  {
+    mapped_target_angle_deg10 = s_follow_manual_hold_target_angle_deg10;
+  }
+  else
+  {
+    mapped_target_angle_deg10 =
+        FollowControl_GetSelectedTargetAngleDeg10(now_ms, mapped_target_angle_deg10, mapped_follower_angle_deg10);
+  }
 
   if (FC_CFG(test_mode) == FOLLOW_CONTROL_TEST_MODE_DIRECTION_PROBE)
   {
@@ -576,7 +669,8 @@ void FollowControl_Task(void)
     g_follow_control.integral_rpm = 0;
     g_follow_control.active = 0U;
     g_follow_control.hold_active = 1U;
-    g_follow_control.reserved0 = 0U;
+    g_follow_control.reserved0 =
+      (s_follow_manual_align_hold_active != 0U) ? FOLLOW_CONTROL_STATUS_MANUAL_ALIGN_HOLD : 0U;
     FollowControl_CommandZeroCurrent();
     return;
   }
@@ -726,8 +820,11 @@ void FollowControl_Task(void)
   g_follow_control.integral_rpm = (int16_t)integral_rpm;
   g_follow_control.active = 1U;
   g_follow_control.hold_active = 0U;
-  g_follow_control.reserved0 = (uint8_t)((urgent_brake != 0U) ? 2U :
-                                         ((abs_error_deg10 <= FC_CFG(settle_zone_deg10)) ? 1U : 0U));
+  g_follow_control.reserved0 = (uint8_t)((s_follow_manual_align_hold_active != 0U)
+                                             ? FOLLOW_CONTROL_STATUS_MANUAL_ALIGN_HOLD
+                                             : ((urgent_brake != 0U)
+                                                    ? 2U
+                                                    : ((abs_error_deg10 <= FC_CFG(settle_zone_deg10)) ? 1U : 0U)));
 
   FollowControl_StartOrUpdateCurrentCommand(s_follow_current_cmd_ma);
 }
