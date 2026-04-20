@@ -1,6 +1,6 @@
 {
-  "cortex-debug.armToolchainPath.windows": "C:\\ST\\STM32CubeIDE_1.19.0\\STM32CubeIDE\\plugins\\com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.13.3.rel1.win32_1.0.0.202411081344\\tools\\bin",
-  "cortex-debug.stm32cubeprogrammer.windows": "C:\\ST\\STM32CubeIDE_1.19.0\\STM32CubeIDE\\plugins\\com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.win32_2.2.200.202503041107\\tools\\bin",
+  "cortex-debug.armToolchainPath.windows": "C:\\ST\\STM32CubeIDE_1.18.1\\STM32CubeIDE\\plugins\\com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.14.3.rel1.win32_1.0.100.202602081740\\tools\\bin",
+  "cortex-debug.stm32cubeprogrammer.windows": "C:\\ST\\STM32CubeIDE_1.18.1\\STM32CubeIDE\\plugins\\com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.win32_2.2.400.202601091506\\tools\\bin",
   "cortex-debug.liveWatchRefreshRate": 300,
   "cortex-debug.variableUseNaturalFormat": true
 }

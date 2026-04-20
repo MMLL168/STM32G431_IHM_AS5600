@@ -26,7 +26,7 @@ To flash the debug ELF with STM32CubeProgrammer:
 powershell -ExecutionPolicy Bypass -File .\tools\cmake-debug.ps1 -Action flash -Preset Debug
 ```
 
-The helper currently pins the `NUCLEO-G431RB` ST-LINK serial `003500383137511233333639` by default, and you can override it with `-ProbeSerial` or the `STM32_STLINK_SN` environment variable.
+The helper defaults to the verified `NUCLEO-G431RB` ST-LINK serial `003500383137511233333639`, and you can still override it with `-ProbeSerial` or the `STM32_STLINK_SN` environment variable.
 
 ## Realtime Monitoring
 
@@ -81,18 +81,18 @@ Important:
 
 `Cortex Debug` in `stlink` mode requires `ST-LINK_gdbserver.exe`.
 
-This machine already has `STM32CubeProgrammer` and `stlinkserver.exe`, but the `ST-LINK_gdbserver.exe` binary was not found during setup. If VSCode reports that it cannot start the ST-LINK GDB server, install `STM32CubeIDE` or `STM32CubeCLT` with the ST-LINK GDB Server component.
+This workspace is configured to use the `ST-LINK_gdbserver.exe` that ships with the local STM32CubeIDE installation. If VSCode reports that it cannot start the ST-LINK GDB server on another machine, install `STM32CubeIDE` or `STM32CubeCLT` with the ST-LINK GDB Server component and update the workspace paths if needed.
 
-If multiple ST-LINK debuggers are connected, `launch.json` should pin the intended probe with `serialNumber`.
+If multiple ST-LINK debuggers are connected, this workspace already pins the intended G431 probe in `launch.json`. You can still override flashing with `STM32_STLINK_SN` when needed.
 
 According to the Cortex-Debug project, Live Watch is configured through a `liveWatch` object in `launch.json`, while the screen refresh rate is controlled by a workspace/user setting. This workspace already sets `cortex-debug.liveWatchRefreshRate`, and `launch.json` now enables `liveWatch` for the STM32G431RB debug configurations.
 
-For this project the `NUCLEO-G431RB` debugger was identified as:
+For this project the verified `NUCLEO-G431RB` debugger is:
 
 - `COM17`
 - `ST-LINK SN = 003500383137511233333639`
 
-The flash helper script now uses the same ST-LINK serial to avoid programming the wrong board when multiple probes are connected.
+The flash helper script uses that same ST-LINK serial by default to avoid programming the wrong board when multiple probes are connected.
 
 If the GDB server starts but reports `ST-LINK firmware upgrade required`, update the G431 board's ST-LINK firmware from STM32CubeProgrammer before retrying VSCode debug.
 

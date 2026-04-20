@@ -17,9 +17,10 @@
         "enabled": true,
         "samplesPerSecond": 4
       },
-      "svdFile": "C:/ST/STM32CubeIDE_1.19.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.productdb.debug_2.2.200.202506131328/resources/cmsis/STMicroelectronics_CMSIS_SVD/STM32G431.svd",
-      "stm32cubeprogrammer": "C:/ST/STM32CubeIDE_1.19.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.win32_2.2.200.202503041107/tools/bin",
-      "gdbPath": "C:/ST/STM32CubeIDE_1.19.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.13.3.rel1.win32_1.0.0.202411081344/tools/bin/arm-none-eabi-gdb.exe",
+      "svdFile": "C:/ST/STM32CubeIDE_1.18.1/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.productdb.debug_2.2.400.202601091600/resources/cmsis/STMicroelectronics_CMSIS_SVD/STM32G431.svd",
+      "stm32cubeprogrammer": "C:/ST/STM32CubeIDE_1.18.1/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.win32_2.2.400.202601091506/tools/bin",
+      "serverpath": "C:/ST/STM32CubeIDE_1.18.1/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.stlink-gdb-server.win32_2.2.400.202601091506/tools/bin/ST-LINK_gdbserver.exe",
+      "gdbPath": "C:/ST/STM32CubeIDE_1.18.1/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.14.3.rel1.win32_1.0.100.202602081740/tools/bin/arm-none-eabi-gdb.exe",
       "showDevDebugOutput": "none"
     },
     {
@@ -35,8 +36,8 @@
         "enabled": true,
         "samplesPerSecond": 4
       },
-      "svdFile": "C:/ST/STM32CubeIDE_1.19.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.productdb.debug_2.2.200.202506131328/resources/cmsis/STMicroelectronics_CMSIS_SVD/STM32G431.svd",
-      "gdbPath": "C:/ST/STM32CubeIDE_1.19.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.13.3.rel1.win32_1.0.0.202411081344/tools/bin/arm-none-eabi-gdb.exe",
+      "svdFile": "C:/ST/STM32CubeIDE_1.18.1/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.productdb.debug_2.2.400.202601091600/resources/cmsis/STMicroelectronics_CMSIS_SVD/STM32G431.svd",
+      "gdbPath": "C:/ST/STM32CubeIDE_1.18.1/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.14.3.rel1.win32_1.0.100.202602081740/tools/bin/arm-none-eabi-gdb.exe",
       "showDevDebugOutput": "none"
     }
   ]
